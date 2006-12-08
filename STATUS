@@ -1,0 +1,60 @@
+
+Status of libxtract features implemented via vamp-libxtract.
+
+A feature is described as "plausible" if it runs without crashing on a
+test audio file in Sonic Visualiser and produces real valued results
+that are not always zero and look (to the uneducated) as if they might
+be in a sensible range.
+
+A features is "suspect" if it returns results but they look like
+they're all over the place.  Other failures are marked accordingly.  I
+have no idea whether these fail in SV, the plugin, or the extraction
+code.  The ones that seem to need investigating are marked with a *.
+
+For simple features like mean, variance etc the plugin just extracts
+the feature from the spectrum magnitudes of each block.
+
+    MEAN		  Plausible
+    VARIANCE		  Plausible
+    STANDARD_DEVIATION	  Plausible
+    AVERAGE_DEVIATION	  Plausible
+    SKEWNESS		* Suspect
+    KURTOSIS		* Suspect
+    CENTROID		  Plausible
+    IRREGULARITY_K	* All zeroes
+    IRREGULARITY_J	* No data
+    TRISTIMULUS_1	  Not implemented (no harmonic spectrum input)
+    TRISTIMULUS_2	  Not implemented (no harmonic spectrum input)
+    TRISTIMULUS_3	  Not implemented (no harmonic spectrum input)
+    SMOOTHNESS		  Plausible
+    SPREAD		  Plausible
+    ZCR			  Plausible
+    ROLLOFF		* Not sure (does produce some data)
+    LOUDNESS		* Does not complete (wild value exposes SV bug?)
+    FLATNESS		  Plausible
+    TONALITY		  Not implemented (code looks wrong in scalar.c)
+    CREST		  Not implemented in libxtract
+    NOISINESS		  Not implemented in libxtract
+    RMS_AMPLITUDE	  Plausible
+    INHARMONICITY	* Fails to find fundamental frequencies in my test file
+    POWER		  Not implemented in libxtract
+    ODD_EVEN_RATIO	  Not implemented (no harmonic spectrum input)
+    SHARPNESS		  Not implemented in libxtract
+    SLOPE		  Not implemented in libxtract
+    LOWEST_MATCH	  Not implemented
+    HPS			  Not implemented (libxtract code says it doesn't work)
+    F0			* Fails to find fundamental frequencies in my test file
+    FLUX		  Not implemented in libxtract
+    ATTACK_TIME		  Not implemented in libxtract
+    DECAY_TIME		  Not implemented in libxtract
+    DELTA_FEATURE	  Not implemented in libxtract
+    AUTOCORRELATION	  Plausible (how should the output be represented?)
+    AMDF		  Plausible (how should the output be represented?)
+    ASDF		  Plausible (how should the output be represented?)
+    BARK_COEFFICIENTS	  Plausible
+    PEAKS		  Plausible
+    MAGNITUDE_SPECTRUM	  Plausible
+    AUTOCORRELATION_FFT	  Plausible (how should the output be represented?)
+    MFCC		* All zeroes
+    DCT			  Plausible
+
