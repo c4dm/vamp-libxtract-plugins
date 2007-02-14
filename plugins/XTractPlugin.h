@@ -18,6 +18,7 @@
 #define _XTRACT_PLUGIN_H_
 
 #include <vamp-sdk/Plugin.h>
+#include <xtract/libxtract.h>
 
 class XTractPlugin : public Vamp::Plugin
 {
@@ -54,22 +55,14 @@ public:
     FeatureSet getRemainingFeatures();
 
 protected:
-    enum XTractInputType {
-        TimeDomainAudio,
-        MagnitudeSpectrum,
-        SpectralPeaks,
-        SpectralPeaksPlusF0,
-        HarmonicSpectrum,
-        BarkCoefficients,
-        CustomInputType
-    };
-    XTractInputType getXTractInputType() const;
     bool needPeakThreshold() const;
+    bool needHarmonicThreshold() const;
+    bool needRolloffThreshold() const;
 
     mutable OutputList m_outputDescriptors;
     void setupOutputDescriptors() const;
 
-    bool processSPF0(float *data);
+    bool processSPF0(const float *data);
 
     const unsigned int m_xtFeature;
     size_t m_channels;
@@ -78,7 +71,9 @@ protected:
 
     float *m_resultBuffer;
 
-    float m_threshold;
+    float m_peakThreshold;
+    float m_rolloffThreshold;
+    float m_harmonicThreshold;
 
     float m_minFreq;
     float m_maxFreq;
@@ -88,6 +83,15 @@ protected:
     int m_mfccStyle;
 
     int *m_barkBandLimits;
+
+    static xtract_function_descriptor_t *m_xtDescriptors;
+    static int m_xtDescRefCount;
+    xtract_function_descriptor_t *xtDescriptor() {
+        return &m_xtDescriptors[m_xtFeature];
+    }
+    const xtract_function_descriptor_t *xtDescriptor() const {
+        return &m_xtDescriptors[m_xtFeature];
+    }
 
     size_t m_outputBinCount;
     bool m_initialised;

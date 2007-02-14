@@ -17,13 +17,18 @@
 #include "XTractPlugin.h"
 
 #include <cassert>
+#include <math.h>
 
-#define XTRACT
-#include <xtract/libxtract.h>
 
 using std::cerr;
 using std::endl;
 using std::string;
+
+xtract_function_descriptor_t *
+XTractPlugin::m_xtDescriptors = 0;
+
+int
+XTractPlugin::m_xtDescRefCount = 0;
 
 XTractPlugin::XTractPlugin(unsigned int xtFeature, float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -32,16 +37,22 @@ XTractPlugin::XTractPlugin(unsigned int xtFeature, float inputSampleRate) :
     m_stepSize(0),
     m_blockSize(0),
     m_resultBuffer(0),
-    m_threshold(10),
+    m_peakThreshold(10),
+    m_rolloffThreshold(90),
+    m_harmonicThreshold(.1),
     m_minFreq(80),
     m_maxFreq(18000),
     m_coeffCount(20),
     m_mfccFilters(0),
-    m_mfccStyle((int)EQUAL_GAIN),
+    m_mfccStyle((int)XTRACT_EQUAL_GAIN),
     m_barkBandLimits(0),
     m_outputBinCount(0),
     m_initialised(false)
 {
+    if (m_xtDescRefCount++ == 0) {
+        m_xtDescriptors =
+            (xtract_function_descriptor_t *)xtract_make_descriptors();
+    }
 }
 
 XTractPlugin::~XTractPlugin()
@@ -58,66 +69,24 @@ XTractPlugin::~XTractPlugin()
     if (m_resultBuffer) {
         delete[] m_resultBuffer;
     }
+
+    if (--m_xtDescRefCount == 0) {
+        xtract_free_descriptors(m_xtDescriptors);
+    }
 }
 
 string
 XTractPlugin::getName() const
 {
-    return xtract_help_strings[m_xtFeature];
+    return xtDescriptor()->algo.name;
 }
 
 string
 XTractPlugin::getDescription() const
 {
-    switch (m_xtFeature) {
-    case MEAN:                return "Spectral Magnitude Mean";
-    case VARIANCE:            return "Spectral Magnitude Variance";
-    case STANDARD_DEVIATION:  return "Spectral Magnitude Standard Deviation";
-    case AVERAGE_DEVIATION:   return "Spectral Magnitude Average Deviation";
-    case SKEWNESS:            return "Spectral Skewness";
-    case KURTOSIS:            return "Spectral Kurtosis";
-    case CENTROID:            return "Spectral Centroid";
-    case IRREGULARITY_K:      return "Spectral Irregularity (Krimphoff)";
-    case IRREGULARITY_J:      return "Spectral Irregularity (Jensen)";
-    case TRISTIMULUS_1:       return "Tristimulus (1st order)";
-    case TRISTIMULUS_2:       return "Tristimulus (2nd order)";
-    case TRISTIMULUS_3:       return "Tristimulus (3rd order)";
-    case SMOOTHNESS:          return "Spectral Smoothness";
-    case SPREAD:              return "Spectral Spread";
-    case ZCR:                 return "Zero Crossing Rate";
-    case ROLLOFF:             return "Spectral Rolloff";
-    case LOUDNESS:            return "Loudness";
-    case FLATNESS:            return "Spectral Flatness";
-    case TONALITY:            return "Tonality";
-    case CREST:               return "Spectral Crest";
-    case NOISINESS:           return "Noisiness";
-    case RMS_AMPLITUDE:       return "RMS Amplitude";
-    case INHARMONICITY:       return "Inharmonicity";
-    case POWER:               return "Spectral Power";
-    case ODD_EVEN_RATIO:      return "Odd/Even Harmonic Ratio";
-    case SHARPNESS:           return "Spectral Sharpness";
-    case SLOPE:               return "Spectral Slope";
-    case LOWEST_MATCH:        return "Lowest Match";
-    case HPS:                 return "Harmonic Product Spectrum";
-    case F0:                  return "Fundamental Frequency";
-    case FLUX:                return "Spectral Flux";
-    case ATTACK_TIME:         return "Attack Time";
-    case DECAY_TIME:          return "Decay Time";
-    case DELTA_FEATURE:       return "Delta of Feature";
-    case AUTOCORRELATION:     return "Autocorrelation (Time Domain)";
-    case AMDF:                return "Average Magnitude Difference Function";
-    case ASDF:                return "Average Squared Difference Function";
-    case BARK_COEFFICIENTS:   return "Bark Band Coefficients";
-    case PEAKS:               return "Spectral Peaks";
-    case MAGNITUDE_SPECTRUM:  return "Magnitude Spectrum";
-    case AUTOCORRELATION_FFT: return "Autocorrelation (FFT)";
-    case MFCC:                return "Mel-Frequency Cepstral Coefficients";
-    case DCT:                 return "Discrete Cosine Transform";
-    default:
-        cerr << "ERROR: XTractPlugin::getDescription: Unexpected feature index " << m_xtFeature << endl;
-        return "<unknown>";
-    }
+    return xtDescriptor()->algo.p_name;
 }
+    
 
 string
 XTractPlugin::getMaker() const
@@ -128,52 +97,45 @@ XTractPlugin::getMaker() const
 int
 XTractPlugin::getPluginVersion() const
 {
-    return 1;
+    return 2;
 }
 
 string
 XTractPlugin::getCopyright() const
 {
+    char year[12];
     string text = "Copyright 2006 Jamie Bullock, plugin Copyright 2006 Queen Mary, University of London. ";
 
-    string method = "Method from ";
+    string method = "";
 
-    switch (m_xtFeature) {
-    case IRREGULARITY_K:      method += "Krimphoff (1994)"; break;
-    case IRREGULARITY_J:      method += "Jensen (1999)"; break;
-    case TRISTIMULUS_1:
-    case TRISTIMULUS_2:
-    case TRISTIMULUS_3:       method += "Pollard and Jansson (1982)"; break;
-    case SMOOTHNESS:          method += "McAdams (1999)"; break;
-    case SPREAD:              method += "Casagrande (2005)"; break;
-    case ROLLOFF:             method += "Bee Suan Ong (2005)"; break;
-    case LOUDNESS:            method += "Moore, Glasberg et al (2005)"; break;
-    case FLATNESS:            method += "Tristan Jehan (2005)"; break;
-    case TONALITY:            method += "Tristan Jehan (2005)"; break;
-    case NOISINESS:           method += "Tae Hong Park (2000)"; break;
-    case CREST:               method += "Peeters (2003)"; break;
-    case POWER:               method += "Bee Suan Ong (2005)"; break;
-    case MFCC:                method += "Rabiner"; break;
-    default:                  method = "";
-    }
+    method += xtDescriptor()->algo.author;
+    sprintf(year, " (%d)", xtDescriptor()->algo.year);
+    method += year;
 
-    if (method != "") text += method + ". ";
+    if (method != "") text += "Method from " + method + ". ";
     text += "Distributed under the GNU General Public License";
     return text;
 }
 
-
 XTractPlugin::InputDomain
 XTractPlugin::getInputDomain() const
 {
-    if (getXTractInputType() == TimeDomainAudio ||
-        getXTractInputType() == SpectralPeaksPlusF0) return TimeDomain;
-    else return FrequencyDomain;
+	
+    if (xtDescriptor()->data.format == XTRACT_AUDIO_SAMPLES)
+	return TimeDomain;
+    else
+	return FrequencyDomain;
 }
+   
+
 
 bool
 XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
 {
+
+    int donor = *(xtDescriptor()->argv.donor),
+	data_format = xtDescriptor()->data.format;
+
     if (channels < getMinChannelCount() ||
         channels > getMaxChannelCount()) return false;
 
@@ -181,7 +143,7 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
     m_stepSize = stepSize;
     m_blockSize = blockSize;
 
-    if (m_xtFeature == MFCC) {
+    if (donor == XTRACT_INIT_MFCC) {
 
         m_mfccFilters = new float *[m_coeffCount];
         for (size_t i = 0; i < m_coeffCount; ++i) {
@@ -191,18 +153,17 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
         int error = (int)xtract_init_mfcc(m_blockSize, m_inputSampleRate/2,
                                           m_mfccStyle, m_minFreq, m_maxFreq,
                                           m_coeffCount, m_mfccFilters);
-        if (error != SUCCESS) {
+        if (error != XTRACT_SUCCESS) {
             cerr << "XTractPlugin::initialise: ERROR: "
                  << "xtract_init_mfcc returned error code " << error << endl;
             return false;
         }
 
-    } else if (m_xtFeature == BARK_COEFFICIENTS ||
-               getXTractInputType() == BarkCoefficients) {
+    } else if (donor == XTRACT_BARK_COEFFICIENTS ||
+               data_format == XTRACT_BARK_COEFFS) {
+        m_barkBandLimits = new int[XTRACT_BARK_BANDS];
 
-        m_barkBandLimits = new int[BARK_BANDS];
-
-        int error = (int)xtract_init_bark(m_blockSize, m_inputSampleRate/2,
+        /*int error = *(int)*/xtract_init_bark(m_blockSize, m_inputSampleRate,
                                           m_barkBandLimits);
 //        if (error != SUCCESS) {
 //            cerr << "XTractPlugin::initialise: ERROR: "
@@ -212,16 +173,22 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
     }
 
     switch (m_xtFeature) {
-    case MAGNITUDE_SPECTRUM:  m_outputBinCount = m_blockSize; break;
-    case AUTOCORRELATION_FFT: m_outputBinCount = m_blockSize; break;
-    case MFCC:                m_outputBinCount = m_coeffCount; break;
-    case DCT:                 m_outputBinCount = m_blockSize; break;
-    case AUTOCORRELATION:     m_outputBinCount = m_blockSize; break;
-    case AMDF:                m_outputBinCount = m_blockSize; break;
-    case ASDF:                m_outputBinCount = m_blockSize; break;
-    case BARK_COEFFICIENTS:   m_outputBinCount = BARK_BANDS; break;
-    case PEAKS:               m_outputBinCount = m_blockSize; break;
-    default:                  m_outputBinCount = 1; break;
+	case XTRACT_SPECTRUM:	     
+	case XTRACT_HARMONIC_SPECTRUM:	     
+	case XTRACT_PEAK_SPECTRUM:           
+	    m_outputBinCount = m_blockSize / 2; break;
+	case XTRACT_DCT:                 
+	case XTRACT_AUTOCORRELATION_FFT: 
+	case XTRACT_AUTOCORRELATION:     
+	case XTRACT_AMDF:                
+	case XTRACT_ASDF:                
+	    m_outputBinCount = m_blockSize; break;
+	case XTRACT_MFCC:                
+	    m_outputBinCount = m_coeffCount; break;
+	case XTRACT_BARK_COEFFICIENTS:   
+	    m_outputBinCount = XTRACT_BARK_BANDS; break;
+	default:			     
+	    m_outputBinCount = 1; break;
     }
 
     setupOutputDescriptors();
@@ -252,9 +219,9 @@ size_t
 XTractPlugin::getPreferredStepSize() const
 {
     if (getInputDomain() == FrequencyDomain) {
-        return getPreferredBlockSize() / 2;
-    } else {
         return getPreferredBlockSize();
+    } else {
+        return getPreferredBlockSize() / 2;
     }
 }
 
@@ -270,7 +237,7 @@ XTractPlugin::getParameterDescriptors() const
     ParameterList list;
     ParameterDescriptor desc;
 
-    if (m_xtFeature == MFCC) {
+    if (m_xtFeature == XTRACT_MFCC) {
 
         desc.name = "minfreq";
         desc.description = "Minimum Frequency";
@@ -311,26 +278,42 @@ XTractPlugin::getParameterDescriptors() const
 
     if (needPeakThreshold()) {
         
-        desc.name = "threshold";
+        desc.name = "peak threshold";
         desc.description = "Peak Threshold";
         desc.minValue = 0;
         desc.maxValue = 100;
-        desc.defaultValue = 10; //!!!???
+        desc.defaultValue = 10; /* Threshold as % of maximum peak found */
         desc.isQuantized = false;
         desc.valueNames.clear();
         desc.unit = "%";
         list.push_back(desc);
 
-    } else if (m_xtFeature == ROLLOFF) {
+    } 
+    
+    if (needRolloffThreshold()) {
 
-        desc.name = "threshold";
+        desc.name = "rolloff threshold";
         desc.description = "Rolloff Threshold";
         desc.minValue = 0;
         desc.maxValue = 100;
-        desc.defaultValue = 10; //!!!???
+        desc.defaultValue = 90; /* Freq below which 90% of energy is */
         desc.isQuantized = false;
         desc.valueNames.clear();
         desc.unit = "%";
+        list.push_back(desc);
+
+    }
+
+    if (needHarmonicThreshold()) {
+
+	desc.name = "harmonic threshold";
+        desc.description = "Harmonic Threshold";
+        desc.minValue = 0;
+        desc.maxValue = 1.0;
+        desc.defaultValue = .1; /* Distance from nearesst harmonic number */
+        desc.isQuantized = false;
+        desc.valueNames.clear();
+        desc.unit = "";
         list.push_back(desc);
     }
 
@@ -340,14 +323,16 @@ XTractPlugin::getParameterDescriptors() const
 float
 XTractPlugin::getParameter(string param) const
 {
-    if (m_xtFeature == MFCC) {
+    if (m_xtFeature == XTRACT_MFCC) {
         if (param == "minfreq") return m_minFreq;
         if (param == "maxfreq") return m_maxFreq;
         if (param == "bands") return m_coeffCount;
         if (param == "style") return m_mfccStyle;
     }
 
-    if (param == "threshold") return m_threshold;
+    if (param == "peak threshold") return m_peakThreshold;
+    if (param == "rolloff threshold") return m_rolloffThreshold;
+    if (param == "harmonic threshold") return m_harmonicThreshold;
 
     return 0.f;
 }
@@ -355,14 +340,16 @@ XTractPlugin::getParameter(string param) const
 void
 XTractPlugin::setParameter(string param, float value)
 {
-    if (m_xtFeature == MFCC) {
+    if (m_xtFeature == XTRACT_MFCC) {
         if (param == "minfreq") m_minFreq = value;
         else if (param == "maxfreq") m_maxFreq = value;
         else if (param == "bands") m_coeffCount = lrintf(value + .1);
         else if (param == "style") m_mfccStyle = lrintf(value + .1);
     }
 
-    if (param == "threshold") m_threshold = value;
+    if (param == "peak threshold") m_peakThreshold = value;
+    if (param == "rolloff threshold") m_rolloffThreshold = value;
+    if (param == "harmonic threshold") m_harmonicThreshold = value;
 }
 
 XTractPlugin::OutputList
@@ -376,7 +363,8 @@ void
 XTractPlugin::setupOutputDescriptors() const
 {
     OutputDescriptor d;
-    d.name = getName();
+    const xtract_function_descriptor_t *xtFd = xtDescriptor();
+    d.name = getName();  
     d.unit = "";
     d.description = getDescription();
     d.hasFixedBinCount = true;
@@ -385,209 +373,204 @@ XTractPlugin::setupOutputDescriptors() const
     d.isQuantized = false;
     d.sampleType = OutputDescriptor::OneSamplePerStep;
 
-    switch (m_xtFeature) {
-    case CENTROID:            d.unit = "Hz"; break;
-    case F0:                  d.unit = "Hz"; break;
-    }
+    if(xtFd->is_scalar){
+	switch(xtFd->result.scalar.unit){
+	    case XTRACT_HERTZ:	    d.unit = "Hz"; break;
+	    case XTRACT_DBFS:	    d.unit = "dB"; break;
+	    default:	    d.unit = ""; break;
+	}
+    }	
+    else {
+	if (xtFd->result.vector.format == XTRACT_SPECTRAL){
 
-    if (m_xtFeature == PEAKS) {
+	    d.binCount /= 2;
+	    d.name = "amplitudes";
+	    d.description = "Peak Amplitudes";
+	    m_outputDescriptors.push_back(d);
 
-        d.binCount /= 2;
-        d.name = "frequencies";
-        d.description = "Peak Frequencies";
-        m_outputDescriptors.push_back(d);
-
-        d.name = "amplitudes";
-        d.description = "Peak Amplitudes";
-        d.unit = "dB";
-
-    } else if (m_xtFeature == MAGNITUDE_SPECTRUM) {
-
-        d.binCount = d.binCount / 2 + 1;
-    }
+	}
+    } 
 
     m_outputDescriptors.push_back(d);
-}
-
-XTractPlugin::XTractInputType
-XTractPlugin::getXTractInputType() const
-{
-    //!!! I don't like this -- split into needXXX functions
-    // (needTimeDomainAudio, needBarkCoefficients etc)
-
-    switch (m_xtFeature) {
-
-    case MEAN:
-    case VARIANCE:
-    case STANDARD_DEVIATION:
-    case AVERAGE_DEVIATION:
-    case SKEWNESS:
-    case KURTOSIS:
-    case IRREGULARITY_K:
-    case IRREGULARITY_J:
-    case SMOOTHNESS:
-    case SPREAD:
-    case FLATNESS:
-    case CREST:
-    case NOISINESS:
-    case POWER:
-    case SHARPNESS:
-    case SLOPE:
-    case HPS:
-    case BARK_COEFFICIENTS:
-    case PEAKS:
-    case FLUX:
-    case ROLLOFF:
-    case MFCC:
-        return MagnitudeSpectrum;
-
-    case CENTROID:
-    case TONALITY:
-        return SpectralPeaks;
-
-    case TRISTIMULUS_1:
-    case TRISTIMULUS_2:
-    case TRISTIMULUS_3:
-    case ODD_EVEN_RATIO:
-        return HarmonicSpectrum;
-
-    case ZCR:
-    case RMS_AMPLITUDE:
-    case F0:
-    case AUTOCORRELATION:
-    case AMDF:
-    case ASDF:
-    case MAGNITUDE_SPECTRUM:
-    case AUTOCORRELATION_FFT:
-    case DCT:
-    case ATTACK_TIME:
-    case DECAY_TIME:
-    case DELTA_FEATURE:
-        return TimeDomainAudio;
-
-    case LOUDNESS:
-        return BarkCoefficients;
-
-    case INHARMONICITY:
-    case LOWEST_MATCH:
-        return SpectralPeaksPlusF0;
-
-    default:
-        cerr << "ERROR: XTractPlugin::getXTractInputType: Unexpected feature index " << m_xtFeature << endl;
-        return TimeDomainAudio;
-    }
 }
 
 bool
 XTractPlugin::needPeakThreshold() const
 {
-    switch (m_xtFeature) {
-    case PEAKS:
-    case CENTROID:
-    case TONALITY:
-    case INHARMONICITY:
-    case LOWEST_MATCH:
-        return true;
+    const xtract_function_descriptor_t *xtFd = xtDescriptor();
 
-    default:
-        return false;
-    }
+    if(m_xtFeature == XTRACT_PEAK_SPECTRUM || 
+	    xtFd->data.format == XTRACT_SPECTRAL_PEAKS ||
+	    xtFd->data.format == XTRACT_SPECTRAL_PEAKS_MAGNITUDES ||
+	    needHarmonicThreshold()) 
+	return true;
+    else return false;
+}
+
+bool
+XTractPlugin::needHarmonicThreshold() const
+{
+    const xtract_function_descriptor_t *xtFd = xtDescriptor();
+
+    if(m_xtFeature == XTRACT_HARMONIC_SPECTRUM || 
+	    xtFd->data.format == XTRACT_SPECTRAL_HARMONICS_FREQUENCIES ||
+	    m_xtFeature == XTRACT_NOISINESS ||
+	    xtFd->data.format == XTRACT_SPECTRAL_HARMONICS_MAGNITUDES) 
+	return true;
+    else return false;
+}
+
+bool
+XTractPlugin::needRolloffThreshold() const
+{
+    if(m_xtFeature == XTRACT_ROLLOFF) 
+	return true;
+    else
+	return false;
 }
 
 XTractPlugin::FeatureSet
 XTractPlugin::process(const float *const *inputBuffers,
                       Vamp::RealTime timestamp)
 {
+
     if (m_outputDescriptors.empty()) setupOutputDescriptors();
 
     int rbs = m_outputBinCount > m_blockSize ? m_outputBinCount : m_blockSize;
     if (!m_resultBuffer) {
         m_resultBuffer = new float[rbs];
     }
-    for (int i = 0; i < rbs; ++i) m_resultBuffer[i] = 0.f;
 
-    float *data = 0;
-    int N = m_blockSize;
+    int i;
+
+    for (i = 0; i < rbs; ++i) m_resultBuffer[i] = 0.f;
+
+    const float *data = 0;
+    float *fft_temp = 0, *data_temp = 0;
+    int N = m_blockSize, M = N >> 1;
     void *argv = 0;
+    bool isSpectral = false;
+    xtract_function_descriptor_t *xtFd = xtDescriptor();
 
     FeatureSet fs;
 
-    XTractInputType inputType = getXTractInputType();
-
-    switch (inputType) {
-
-    case TimeDomainAudio:
-    case SpectralPeaksPlusF0:
-        assert(getInputDomain() == TimeDomain);
-        // libxtract functions may modify their input data, so we must copy
-        data = new float[N];
-        for (int n = 1; n < N; ++n) {
-            data[n] = inputBuffers[0][n];
-        }
-        break;
-
-    default:
-        // All the rest are derived from the magnitude spectrum
-        assert(getInputDomain() == FrequencyDomain);
-        // Need same format as would be output by xtract_magnitude_spectrum
-        data = new float[N];
-        for (int n = 1; n < N/2; ++n) {
-            data[n]   = sqrt(inputBuffers[0][n*2]   * inputBuffers[0][n*2] +
-                             inputBuffers[0][n*2+1] * inputBuffers[0][n*2+1]) / N;
-            data[N-n] = 0.f;
-        }
-        data[0]   = fabs(inputBuffers[0][0]) / N;
-        data[N/2] = fabs(inputBuffers[0][N]) / N;
-        break;
+    switch (xtFd->data.format) {
+	case XTRACT_AUDIO_SAMPLES:
+	    data = &inputBuffers[0][0];
+	    break;
+	case XTRACT_SPECTRAL:
+	default:
+	    // All the rest are derived from the  spectrum
+	    // Need same format as would be output by xtract_spectrum
+	    float q = m_inputSampleRate / N;
+	    fft_temp = new float[N];
+	    for (int n = 1; n < N/2; ++n) {
+		fft_temp[n]   = sqrt(inputBuffers[0][n*2]   * 
+			inputBuffers[0][n*2] + inputBuffers[0][n*2+1] * 
+			inputBuffers[0][n*2+1]) / N;
+		fft_temp[N-n] = (N/2 - n) * q;
+	    }
+	    fft_temp[0]   = fabs(inputBuffers[0][0]) / N;
+	    fft_temp[N/2] = fabs(inputBuffers[0][N]) / N;
+	    data = &fft_temp[0];
+	    isSpectral = true;
+	    break;
     }
 
     assert(m_outputBinCount > 0);
 
     float *result = m_resultBuffer;
 
-    float argf[2];
+    float argf[XTRACT_MAXARGS];
     argv = &argf[0];
 
-    float mean = 0.f, variance = 0.f, sd = 0.f;
+    float mean, variance, sd, npartials, nharmonics;
 
-    bool needSD = (m_xtFeature == SKEWNESS ||
-                   m_xtFeature == KURTOSIS);
+    bool needSD, needVariance, needMean, needPeaks, 
+	 needBarkCoefficients, needHarmonics, needF0, needSFM, needMax, 
+	 needNumPartials, needNumHarmonics;
 
-    bool needVariance = (needSD ||
-                         m_xtFeature == STANDARD_DEVIATION);
+    int donor;
 
-    bool needMean = (needVariance ||
-                     m_xtFeature == VARIANCE ||
-                     m_xtFeature == AVERAGE_DEVIATION);
+    needSD = needVariance = needMean = needPeaks =  
+	needBarkCoefficients = needF0 = needHarmonics = needSFM = needMax = 
+	needNumPartials = needNumHarmonics = 0;
 
-    bool needPeaks = (needPeakThreshold() && m_xtFeature != PEAKS);
-    bool needBarkCoefficients = (m_xtFeature == LOUDNESS);
+    mean = variance = sd = npartials = nharmonics = 0.f;
 
-    float *barkCoefficients = 0;
+    i = xtFd->argc;
 
-    if (inputType == SpectralPeaksPlusF0) {
-        if (processSPF0(data)) goto haveResult;
-        else goto done;
+    while(i--){
+	donor = xtFd->argv.donor[i];
+	switch(donor){
+	    case XTRACT_STANDARD_DEVIATION: 
+	    case XTRACT_SPECTRAL_STANDARD_DEVIATION:
+		needSD = 1;	
+		break;
+	    case XTRACT_VARIANCE:	    
+	    case XTRACT_SPECTRAL_VARIANCE:
+		needVariance = 1; 
+		break;	
+	    case XTRACT_MEAN:		  
+	    case XTRACT_SPECTRAL_MEAN:	
+		needMean = 1;		
+		break;
+	    case XTRACT_F0:
+	    case XTRACT_FAILSAFE_F0:
+		needF0 = 1;
+		break;
+	    case XTRACT_FLATNESS:
+		needSFM = 1;
+	    case XTRACT_HIGHEST_VALUE:
+		needMax = 1;
+		break;
+	}
+    }
+
+    if(needHarmonicThreshold() && m_xtFeature != XTRACT_HARMONIC_SPECTRUM)
+	needHarmonics = needF0  = 1;
+
+    if(needPeakThreshold()  && m_xtFeature != XTRACT_PEAK_SPECTRUM) 
+	needPeaks = 1; 
+
+    if(xtFd->data.format == XTRACT_BARK_COEFFS && 
+	    m_xtFeature != XTRACT_BARK_COEFFICIENTS){
+	needBarkCoefficients = 1;
     }
 
     if (needMean) {
-        xtract_mean(data, N, 0, result);
+	if(isSpectral)
+	    xtract_spectral_mean(data, N, 0, result);
+	else
+	    xtract_mean(data, M, 0, result);
         mean = *result;
         *result = 0.f;
     }
 
-    if (needVariance) {
+    if (needVariance || needSD) {
         argf[0] = mean;
-        xtract_variance(data, N, argv, result);
+	if(isSpectral)
+	    xtract_spectral_variance(data, N, argv, result);
+	else
+	    xtract_variance(data, M, argv, result);
         variance = *result;
         *result = 0.f;
     } 
 
     if (needSD) {
         argf[0] = variance;
-        xtract_standard_deviation(data, N, argv, result);
+	if(isSpectral)
+	    xtract_spectral_standard_deviation(data, N, argv, result);
+	else
+	    xtract_standard_deviation(data, M, argv, result);
         sd = *result;
         *result = 0.f;
+    }
+
+    if (needMax) {
+	xtract_highest_value(data, M, argv, result);
+	argf[1] = *result;
+	*result = 0.f;
     }
 
     if (needSD) {
@@ -600,51 +583,40 @@ XTractPlugin::process(const float *const *inputBuffers,
     }
     
     // data should be now correct for all except:
-    // CENTROID -- N/2 frequency and N/2 magnitude peaks
-    // TONALITY -- peaks (different from those for CENTROID?)
+    // XTRACT_SPECTRAL_CENTROID -- N/2 magnitude peaks and N/2 frequencies
+    // TONALITY -- SFM
     // TRISTIMULUS_1/2/3 -- harmonic spectrum
     // ODD_EVEN_RATIO -- harmonic spectrum
     // LOUDNESS -- Bark coefficients
+    // XTRACT_HARMONIC_SPECTRUM -- peak spectrum
 
     // argv should be now correct for all except:
     //
-    // ROLLOFF -- threshold
-    // F0 -- samplerate
-    // MFCC -- Mel filter coefficients
-    // BARK_COEFFICIENTS -- Bark band limits
-    // PEAKS -- peak threshold and samplerate
+    // XTRACT_ROLLOFF -- (sr/N), threshold (%)
+    // XTRACT_PEAK_SPECTRUM -- (sr / N), peak threshold (%)
+    // XTRACT_HARMONIC_SPECTRUM -- f0, harmonic threshold
+    // XTRACT_F0 -- samplerate
+    // XTRACT_MFCC -- Mel filter coefficients
+    // XTRACT_BARK_COEFFICIENTS -- Bark band limits
+    // XTRACT_NOISINESS -- npartials, nharmonics.
 
-    if (m_xtFeature == ROLLOFF) {
-        argf[0] = m_threshold / 100.f;
+    data_temp = new float[N];
+
+    if (m_xtFeature == XTRACT_ROLLOFF || 
+	    m_xtFeature == XTRACT_PEAK_SPECTRUM || needPeaks) {
+        argf[0] = m_inputSampleRate / N;
+	if(m_xtFeature == XTRACT_ROLLOFF) 
+	    argf[1] = m_rolloffThreshold;
+	else 
+	    argf[1] = m_peakThreshold;
         argv = &argf[0];
-    }
-
-    if (m_xtFeature == F0) {
-        argf[0] = m_inputSampleRate;
-        argv = &argf[0];
-    }
-    
-    if (m_xtFeature == PEAKS || needPeaks) {
-        argf[0] = m_threshold;
-        argf[1] = m_inputSampleRate;
-        argv = &argf[0];
-    }
-
-    if (m_xtFeature == BARK_COEFFICIENTS || needBarkCoefficients) {
-        argv = &m_barkBandLimits[0];
-    }
-
-    xtract_mel_filter mfccFilterBank;
-    if (m_xtFeature == MFCC) {
-        mfccFilterBank.n_filters = m_coeffCount;
-        mfccFilterBank.filters = m_mfccFilters;
-        argv = &mfccFilterBank;
     }
 
     if (needPeaks) {
-        int rv = xtract_peaks(data, N, argv, result);
+	//We only read in the magnitudes (M)
+        /*int rv = */ xtract_peak_spectrum(data, M, argv, result);
         for (int n = 0; n < N; ++n) {
-            data[n] = result[n];
+            data_temp[n] = result[n];
             result[n] = 0.f;
         }
         // rv not trustworthy
@@ -654,33 +626,109 @@ XTractPlugin::process(const float *const *inputBuffers,
 //        }
     }
 
+    if (needNumPartials) {
+	xtract_nonzero_count(data_temp, M, NULL, &npartials);
+    }
+
+    if (needF0 || m_xtFeature == XTRACT_FAILSAFE_F0 || 
+	    m_xtFeature == XTRACT_F0) {
+        argf[0] = m_inputSampleRate;
+        argv = &argf[0];
+    }
+
+    if (needF0) {
+	xtract_failsafe_f0(&inputBuffers[0][0], N, 
+		(void *)&m_inputSampleRate, result);
+	argf[0] = *result;
+	argv = &argf[0];
+    }
+
+    if (needSFM) {
+	xtract_flatness(data, N >> 1, 0, &argf[0]);
+	argv = &argf[0];
+    }
+
+    if (needHarmonics || m_xtFeature == XTRACT_HARMONIC_SPECTRUM){
+       argf[1] = m_harmonicThreshold;
+    }       
+
+    if (needHarmonics){
+	xtract_harmonic_spectrum(data_temp, N, argv, result);
+        for (int n = 0; n < N; ++n) {
+            data_temp[n] = result[n];
+            result[n] = 0.f;
+        }
+    }
+
+    if (needNumHarmonics) {
+	xtract_nonzero_count(data_temp, M, NULL, &nharmonics);
+    }
+
+    if (m_xtFeature == XTRACT_NOISINESS) {
+
+	argf[0] = nharmonics;
+	argf[1] = npartials;
+	argv = &argf[0];
+
+    }
+
+    if (needBarkCoefficients || m_xtFeature == XTRACT_BARK_COEFFICIENTS) {
+        argv = &m_barkBandLimits[0];
+    }
+
+    xtract_mel_filter mfccFilterBank;
+    if (m_xtFeature == XTRACT_MFCC) {
+        mfccFilterBank.n_filters = m_coeffCount;
+        mfccFilterBank.filters = m_mfccFilters;
+        argv = &mfccFilterBank;
+    }
+
     if (needBarkCoefficients) {
-        barkCoefficients = new float[BARK_BANDS];
-        int rv = xtract_bark_coefficients(data, N, argv, barkCoefficients);
+	
+        /*int rv = */ xtract_bark_coefficients(data, 0, argv, data_temp);
 //        if (rv != SUCCESS) {
 //            cerr << "ERROR: XTractPlugin::process: xtract_bark_coefficients failed (error code = " << rv << ")" << endl;
 //            goto done;
 //        }
-        data = barkCoefficients;
-        N = BARK_BANDS;
+        data = &data_temp[0]; 
         argv = 0;
     }
+    
+    if (xtFd->data.format == XTRACT_SPECTRAL_HARMONICS_FREQUENCIES) {
 
-    if (inputType == HarmonicSpectrum) {
+	N = M;
+	data = &data_temp[N];
 
-        //!!! Not yet implemented
+    } else if (xtFd->data.format == XTRACT_SPECTRAL_HARMONICS_MAGNITUDES) {
 
-    } else if (inputType == SpectralPeaks) {
+	N = M;
+	data = &data_temp[0];
+   
+    } 
 
-        assert(needPeaks);
+    // If we only want spectral magnitudes, use first half of the input array
+    else if(xtFd->data.format == XTRACT_SPECTRAL_MAGNITUDES ||
+	    xtFd->data.format == XTRACT_SPECTRAL_PEAKS_MAGNITUDES ||
+	    xtFd->data.format == XTRACT_ARBITRARY_SERIES) {
+	N = M;
+    }
+
+    else if(xtFd->data.format == XTRACT_BARK_COEFFS) {
+
+        N = XTRACT_BARK_BANDS - 1; /* Because our SR is 44100 (< 54000)*/
+    }
+
+    if (needPeaks && !needHarmonics) {
+
+	data = &data_temp[0];
+
     }
 
     // now the main result
-
     xtract[m_xtFeature](data, N, argv, result);
 
-haveResult:
-    {
+//haveResult:
+//    {
         int index = 0;
 
         for (size_t output = 0; output < m_outputDescriptors.size(); ++output) {
@@ -702,53 +750,16 @@ haveResult:
             
             if (good) fs[output].push_back(feature);
         }
-    }
+//    }
    
-done:
-    if (barkCoefficients) delete[] barkCoefficients;
-    delete[] data;
+//done:
+    delete[] fft_temp;
+    delete[] data_temp;
 
     cerr << "XTractPlugin::process returning" << endl;
 
     return fs;
 }
-
-bool
-XTractPlugin::processSPF0(float *data)
-{
-    int N = m_blockSize;
-
-    xtract_magnitude_spectrum(data, N, 0, m_resultBuffer);
-    
-    float *peaks = new float[N];
-    float argf[2];
-    argf[0] = m_threshold;
-    argf[1] = m_inputSampleRate;
-    int rv = xtract_peaks(m_resultBuffer, N, &argf[0], peaks);
-    // rv not trustworthy
-//    if (rv != SUCCESS) {
-//        cerr << "ERROR: XTractPlugin::processSPF0: xtract_peaks failed (error code = " << rv << ")" << endl;
-//        return false;
-//    }
-
-    float f0 = 0.f;
-    rv = xtract_f0(data, N, &argf[1], &f0);
-    if (rv != SUCCESS) {
-        cerr << "ERROR: XTractPlugin::processSPF0: xtract_f0 failed (error code = " << rv << ")" << endl;
-        return false;
-    }
-
-    float *mda[2];
-    mda[0] = &f0;
-    mda[1] = &(peaks[N/2]);
-
-    for (int i = 0; i < N/2; ++i) m_resultBuffer[i] = 0.f;
-
-    xtract[m_xtFeature](peaks, N/2, mda, m_resultBuffer);
-
-    return true;
-}
-
 
 XTractPlugin::FeatureSet
 XTractPlugin::getRemainingFeatures()

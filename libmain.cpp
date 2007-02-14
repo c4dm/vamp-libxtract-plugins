@@ -62,28 +62,21 @@ const VampPluginDescriptor *vampGetPluginDescriptor(unsigned int index)
 
     const unsigned int missingFeatures[] = {
 
-        TRISTIMULUS_1,   // not equipped to provide harmonic spectrum input
-        TRISTIMULUS_2,   // not equipped to provide harmonic spectrum input
-        TRISTIMULUS_3,   // not equipped to provide harmonic spectrum input
-        TONALITY,        // nonsensical definition in scalar.c?
-        CREST,           // not implemented
-        NOISINESS,       // not implemented
-        POWER,           // not implemented
-        ODD_EVEN_RATIO,  // not equipped to provide harmonic spectrum input
-        SHARPNESS,       // not implemented
-        SLOPE,           // not implemented
-        LOWEST_MATCH,    // not meaningful?
-        HPS,             // "this function doesn't work properly"
-        FLUX,            // not implemented
-        ATTACK_TIME,     // not implemented
-        DECAY_TIME,      // not implemented
-        DELTA_FEATURE,   // not implemented (and not meaningful?)
+	XTRACT_SPECTRAL_MEAN,   // Just a wrapper for XTRACT_SPECTRAL_CENTROID
+	XTRACT_POWER,		// not implemented
+        XTRACT_HPS,             // "this function doesn't work properly"
+        XTRACT_FLUX,            // not implemented
+        XTRACT_ATTACK_TIME,     // not implemented
+        XTRACT_DECAY_TIME,      // not implemented
+        XTRACT_DELTA_FEATURE,   // not implemented (and not meaningful?)
 
 #ifndef HAVE_XTRACT_FFT
-        MAGNITUDE_SPECTRUM,  // requires fftw
-        AUTOCORRELATION_FFT, // requires fftw
-        MFCC,                // requires fftw
-        DCT,                 // requires fftw
+        XTRACT_MAGNITUDE_SPECTRUM,  // requires fftw
+#endif
+        XTRACT_AUTOCORRELATION_FFT, // requires fftw -- also erroneous
+#ifndef HAVE_XTRACT_FFT
+        XTRACT_MFCC,                // requires fftw
+        XTRACT_DCT,                 // requires fftw
 #endif
     };
 
