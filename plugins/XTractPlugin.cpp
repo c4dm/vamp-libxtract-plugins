@@ -76,15 +76,21 @@ XTractPlugin::~XTractPlugin()
 }
 
 string
-XTractPlugin::getName() const
+XTractPlugin::getIdentifier() const
 {
     return xtDescriptor()->algo.name;
 }
 
 string
-XTractPlugin::getDescription() const
+XTractPlugin::getName() const
 {
     return xtDescriptor()->algo.p_name;
+}
+
+string
+XTractPlugin::getDescription() const
+{
+    return xtDescriptor()->algo.p_desc;
 }
     
 
@@ -239,8 +245,8 @@ XTractPlugin::getParameterDescriptors() const
 
     if (m_xtFeature == XTRACT_MFCC) {
 
-        desc.name = "minfreq";
-        desc.description = "Minimum Frequency";
+        desc.identifier = "minfreq";
+        desc.name = "Minimum Frequency";
         desc.minValue = 0;
         desc.maxValue = m_inputSampleRate / 2;
         desc.defaultValue = 80;
@@ -248,16 +254,16 @@ XTractPlugin::getParameterDescriptors() const
         desc.unit = "Hz";
         list.push_back(desc);
 
-        desc.name = "maxfreq";
-        desc.description = "Maximum Frequency";
+        desc.identifier = "maxfreq";
+        desc.name = "Maximum Frequency";
         desc.defaultValue = 18000;
         if (desc.defaultValue > m_inputSampleRate * 0.875) {
             desc.defaultValue = m_inputSampleRate * 0.875;
         }
         list.push_back(desc);
 
-        desc.name = "bands";
-        desc.description = "Mel Frequency Bands";
+        desc.identifier = "bands";
+        desc.name = "Mel Frequency Bands";
         desc.minValue = 10;
         desc.maxValue = 30;
         desc.defaultValue = 20;
@@ -266,8 +272,8 @@ XTractPlugin::getParameterDescriptors() const
         desc.quantizeStep = 1;
         list.push_back(desc);
 
-        desc.name = "style";
-        desc.description = "MFCC Type";
+        desc.identifier = "style";
+        desc.name = "MFCC Type";
         desc.minValue = 0;
         desc.maxValue = 1;
         desc.defaultValue = 0;
@@ -278,8 +284,8 @@ XTractPlugin::getParameterDescriptors() const
 
     if (needPeakThreshold()) {
         
-        desc.name = "peak threshold";
-        desc.description = "Peak Threshold";
+        desc.identifier = "peak threshold";
+        desc.name = "Peak Threshold";
         desc.minValue = 0;
         desc.maxValue = 100;
         desc.defaultValue = 10; /* Threshold as % of maximum peak found */
@@ -292,8 +298,8 @@ XTractPlugin::getParameterDescriptors() const
     
     if (needRolloffThreshold()) {
 
-        desc.name = "rolloff threshold";
-        desc.description = "Rolloff Threshold";
+        desc.identifier = "rolloff threshold";
+        desc.name = "Rolloff Threshold";
         desc.minValue = 0;
         desc.maxValue = 100;
         desc.defaultValue = 90; /* Freq below which 90% of energy is */
@@ -306,8 +312,8 @@ XTractPlugin::getParameterDescriptors() const
 
     if (needHarmonicThreshold()) {
 
-	desc.name = "harmonic threshold";
-        desc.description = "Harmonic Threshold";
+	desc.identifier = "harmonic threshold";
+        desc.name = "Harmonic Threshold";
         desc.minValue = 0;
         desc.maxValue = 1.0;
         desc.defaultValue = .1; /* Distance from nearesst harmonic number */
@@ -364,9 +370,10 @@ XTractPlugin::setupOutputDescriptors() const
 {
     OutputDescriptor d;
     const xtract_function_descriptor_t *xtFd = xtDescriptor();
-    d.name = getName();  
-    d.unit = "";
+    d.identifier = getIdentifier();  
+    d.name = getName();
     d.description = getDescription();
+    d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = m_outputBinCount;
     d.hasKnownExtents = false;
@@ -384,8 +391,9 @@ XTractPlugin::setupOutputDescriptors() const
 	if (xtFd->result.vector.format == XTRACT_SPECTRAL){
 
 	    d.binCount /= 2;
-	    d.name = "amplitudes";
-	    d.description = "Peak Amplitudes";
+	    d.identifier = "amplitudes";
+	    d.name = "Peak Amplitudes";
+            d.description = "";
 	    m_outputDescriptors.push_back(d);
 
 	}
