@@ -50,8 +50,11 @@ static std::map<unsigned int, XTractPluginAdapter *> pluginAdapterMap;
 // linked with fftw3
 #define HAVE_XTRACT_FFT 1
 
-const VampPluginDescriptor *vampGetPluginDescriptor(unsigned int index)
+const VampPluginDescriptor *vampGetPluginDescriptor(unsigned int vampApiVersion,
+                                                    unsigned int index)
 {
+    if (vampApiVersion < 1) return 0;
+
     // The missingFeatures array contains the libxtract enum values
     // for features that we are not providing in this plugin, either
     // because they aren't very meaningful in isolation or because the

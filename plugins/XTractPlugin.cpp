@@ -764,7 +764,7 @@ XTractPlugin::process(const float *const *inputBuffers,
     delete[] fft_temp;
     delete[] data_temp;
 
-    cerr << "XTractPlugin::process returning" << endl;
+//    cerr << "XTractPlugin::process returning" << endl;
 
     return fs;
 }
