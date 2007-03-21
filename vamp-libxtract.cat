@@ -39,8 +39,8 @@ vamp:vamp-libxtract:autocorrelation::Low Level Features
 vamp:vamp-libxtract:amdf::Low Level Features
 vamp:vamp-libxtract:asdf::Low Level Features
 vamp:vamp-libxtract:bark_coefficients::Low Level Features
-vamp:vamp-libxtract:peak_spectrum::Low Level Features
-vamp:vamp-libxtract:harmonic_spectrum::Low Level Features
-vamp:vamp-libxtract:spectrum::Low Level Features
+vamp:vamp-libxtract:peak_spectrum::Visualisation
+vamp:vamp-libxtract:harmonic_spectrum::Visualisation
+vamp:vamp-libxtract:spectrum::Visualisation
 vamp:vamp-libxtract:mfcc::Low Level Features
 vamp:vamp-libxtract:dct::Low Level Features
