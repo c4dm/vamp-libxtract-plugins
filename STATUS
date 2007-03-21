@@ -1,0 +1,55 @@
+MEAN:			    Works  
+VARIANCE:		    Works
+STANDARD_DEVIATION:	    Works
+AVERAGE_DEVIATION:	    Works
+SKEWNESS:		    Works 
+KURTOSIS:		    Works
+SPECTRAL_MEAN:		    Excluded (same as centroid)
+SPECTRAL_VARIANCE:	    Works
+SPECTRAL_STANDARD_DEVIATION:Works
+SPECTRAL_AVERAGE_DEVIATION: Works
+SPECTRAL_SKEWNESS:	    Works (but ridiculously low value)
+SPECTRAL_KURTOSIS:	    Works (but ridiculously high value)
+SPECTRAL_CENTROID:	    Works
+IRREGULARITY_K:		    Works 
+IRREGULARITY_J:		    Works 
+TRISTIMULUS_1:		    Works 
+TRISTIMULUS_2:		    Works
+TRISTIMULUS_3:		    Works
+SMOOTHNESS:		    Works (but needs checking -looks a bit random)
+SPREAD:			    Works
+ZCR:			    Works
+ROLLOFF:		    Works 
+LOUDNESS:		    Broken (different values every time (SV bug?))
+FLATNESS:		    Works (but ridiculously low values)
+TONALITY:		    Works (but (input) range wrong)
+CREST:			    Works (but ridiculously high values)
+NOISINESS:		    Works
+RMS_AMPLITUDE:		    Works
+SPECTRAL_INHARMONICITY:	    Works (but output not in expected range [0,1])
+POWER:			    Excluded (not implemented)
+ODD_EVEN_RATIO:		    Works
+SHARPNESS:		    Broken (different values every time (SV bug?))
+SPECTRAL_SLOPE:		    Works
+LOWEST_VALUE:		    Works
+HIGHEST_VALUE:		    Works 
+SUM:			    Works 
+NONZERO_COUNT:		    Works
+HPS:			    Excluded (broken xtractor)
+F0:			    Works 
+FAILSAFE_F0:		    Works 
+FLUX:			    Excluded (not implemented)
+ATTACK_TIME:		    Excluded (not implemented)
+DECAY_TIME:		    Excluded (not implemented)
+DELTA_FEATURE:		    Excluded (not implemented) 
+AUTOCORRELATION:	    Works
+AMDF:			    Works
+ASDF:			    Works
+BARK_COEFFICIENTS:	    Works
+PEAK_SPECTRUM:		    Works
+SPECTRUM:		    Works
+AUTOCORRELATION_FFT:	    Excluded (needs check)
+MFCC:			    Works 
+DCT:			    Works 
+HARMONIC_SPECTRUM:	    Works
+
