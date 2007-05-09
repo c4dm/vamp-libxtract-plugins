@@ -166,7 +166,9 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
         }
 
     } else if (donor == XTRACT_BARK_COEFFICIENTS ||
+               donor == XTRACT_INIT_BARK ||
                data_format == XTRACT_BARK_COEFFS) {
+
         m_barkBandLimits = new int[XTRACT_BARK_BANDS];
 
         /*int error = *(int)*/xtract_init_bark(m_blockSize, m_inputSampleRate,
