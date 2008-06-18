@@ -79,7 +79,9 @@ protected:
     float m_minFreq;
     float m_maxFreq;
 
-    size_t m_coeffCount;
+    int m_coeffCount;
+    int m_highestCoef;
+    int m_lowestCoef;
     float **m_mfccFilters;
     int m_mfccStyle;
 
@@ -96,6 +98,7 @@ protected:
 
     size_t m_outputBinCount;
     bool m_initialised;
+    static bool m_anyInitialised;
 };
 
 

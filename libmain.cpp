@@ -46,9 +46,8 @@ protected:
 
 static std::map<unsigned int, XTractPluginAdapter *> pluginAdapterMap;
 
-// Define this if libxtract has been compiled with XTRACT_FFT and
+// Note: libxtract must have been compiled with XTRACT_FFT and
 // linked with fftw3
-#define HAVE_XTRACT_FFT 1
 
 const VampPluginDescriptor *vampGetPluginDescriptor(unsigned int vampApiVersion,
                                                     unsigned int index)
@@ -66,21 +65,19 @@ const VampPluginDescriptor *vampGetPluginDescriptor(unsigned int vampApiVersion,
     const unsigned int missingFeatures[] = {
 
 	XTRACT_SPECTRAL_MEAN,   // Just a wrapper for XTRACT_SPECTRAL_CENTROID
+        XTRACT_FLATNESS_DB,     // appears to implement only the db part
 	XTRACT_POWER,		// not implemented
         XTRACT_HPS,             // "this function doesn't work properly"
+        XTRACT_LNORM,           // not quite sure what it is or its parameters
         XTRACT_FLUX,            // not implemented
         XTRACT_ATTACK_TIME,     // not implemented
         XTRACT_DECAY_TIME,      // not implemented
-        XTRACT_DELTA_FEATURE,   // not implemented (and not meaningful?)
-
-#ifndef HAVE_XTRACT_FFT
-        XTRACT_MAGNITUDE_SPECTRUM,  // requires fftw
-#endif
-        XTRACT_AUTOCORRELATION_FFT, // requires fftw -- also erroneous
-#ifndef HAVE_XTRACT_FFT
-        XTRACT_MFCC,                // requires fftw
-        XTRACT_DCT,                 // requires fftw
-#endif
+        XTRACT_DIFFERENCE_VECTOR,   // not meaningful (this used to be XTRACT_DELTA_FEATURE)
+        XTRACT_AUTOCORRELATION_FFT, // apparently erroneous
+        XTRACT_LPC,             // not meaningful and/or not implemented here
+        XTRACT_LPCC,            // not meaningful and/or not implemented here
+        XTRACT_SUBBANDS,        // not meaningful in isolation
+        XTRACT_WINDOWED         // not meaningful
     };
 
     for (unsigned int i = 0;

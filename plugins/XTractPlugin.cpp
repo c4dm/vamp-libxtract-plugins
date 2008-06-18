@@ -42,7 +42,9 @@ XTractPlugin::XTractPlugin(unsigned int xtFeature, float inputSampleRate) :
     m_harmonicThreshold(.1),
     m_minFreq(80),
     m_maxFreq(18000),
-    m_coeffCount(20),
+    m_coeffCount(40),
+    m_highestCoef(20),
+    m_lowestCoef(0),
     m_mfccFilters(0),
     m_mfccStyle((int)XTRACT_EQUAL_GAIN),
     m_barkBandLimits(0),
@@ -109,16 +111,22 @@ XTractPlugin::getPluginVersion() const
 string
 XTractPlugin::getCopyright() const
 {
-    char year[12];
     string text = "Copyright 2006 Jamie Bullock, plugin Copyright 2006 Queen Mary, University of London. ";
 
     string method = "";
 
     method += xtDescriptor()->algo.author;
-    sprintf(year, " (%d)", xtDescriptor()->algo.year);
-    method += year;
 
-    if (method != "") text += "Method from " + method + ". ";
+    if (method != "") {
+        int year = xtDescriptor()->algo.year;
+        if (year != 0) {
+            char yearstr[12];
+            sprintf(yearstr, " (%d)", year);
+            method += yearstr;
+        }
+        text += "Method from " + method + ". ";
+    }
+
     text += "Distributed under the GNU General Public License";
     return text;
 }
@@ -134,6 +142,7 @@ XTractPlugin::getInputDomain() const
 }
    
 
+bool XTractPlugin::m_anyInitialised = false;
 
 bool
 XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
@@ -145,9 +154,25 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
     if (channels < getMinChannelCount() ||
         channels > getMaxChannelCount()) return false;
 
+    if (blockSize != getPreferredBlockSize()) {
+        cerr << "XTractPlugin::initialise: ERROR: "
+             << "Only the standard block size of " << getPreferredBlockSize()
+             << " is supported (owing to global FFT initialisation requirements)" << endl;
+        return false;
+    }
+
     m_channels = channels;
     m_stepSize = stepSize;
     m_blockSize = blockSize;
+
+    if (!m_anyInitialised) {
+        m_anyInitialised = true;
+        // initialise libxtract
+        xtract_init_fft(m_blockSize, XTRACT_SPECTRUM);
+        xtract_init_fft(m_blockSize, XTRACT_AUTOCORRELATION_FFT);
+        xtract_init_fft(m_blockSize, XTRACT_DCT);
+        xtract_init_fft(m_blockSize, XTRACT_MFCC);
+    }        
 
     if (donor == XTRACT_INIT_MFCC) {
 
@@ -192,7 +217,8 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
 	case XTRACT_ASDF:                
 	    m_outputBinCount = m_blockSize; break;
 	case XTRACT_MFCC:                
-	    m_outputBinCount = m_coeffCount; break;
+	    m_outputBinCount = (m_highestCoef - m_lowestCoef)+1; break;
+	    //m_outputBinCount = m_coeffCount; break;
 	case XTRACT_BARK_COEFFICIENTS:   
 	    m_outputBinCount = XTRACT_BARK_BANDS; break;
 	default:			     
@@ -265,9 +291,29 @@ XTractPlugin::getParameterDescriptors() const
         list.push_back(desc);
 
         desc.identifier = "bands";
-        desc.name = "Mel Frequency Bands";
+        desc.name = "# Mel Frequency Bands";
         desc.minValue = 10;
-        desc.maxValue = 30;
+        desc.maxValue = 80;
+        desc.defaultValue = 40;
+        desc.unit = "";
+        desc.isQuantized = true;
+        desc.quantizeStep = 1;
+        list.push_back(desc);
+
+        desc.identifier = "lowestcoef";
+        desc.name = "Lowest Coefficient Returned";
+        desc.minValue = 0;
+        desc.maxValue = 80;
+        desc.defaultValue = 0;
+        desc.unit = "";
+        desc.isQuantized = true;
+        desc.quantizeStep = 1;
+        list.push_back(desc);
+
+        desc.identifier = "highestcoef";
+        desc.name = "Highest Coefficient Returned";
+        desc.minValue = 0;
+        desc.maxValue = 80;
         desc.defaultValue = 20;
         desc.unit = "";
         desc.isQuantized = true;
@@ -335,6 +381,8 @@ XTractPlugin::getParameter(string param) const
         if (param == "minfreq") return m_minFreq;
         if (param == "maxfreq") return m_maxFreq;
         if (param == "bands") return m_coeffCount;
+        if (param == "lowestcoef") return m_lowestCoef;
+        if (param == "highestcoef") return m_highestCoef;
         if (param == "style") return m_mfccStyle;
     }
 
@@ -352,6 +400,16 @@ XTractPlugin::setParameter(string param, float value)
         if (param == "minfreq") m_minFreq = value;
         else if (param == "maxfreq") m_maxFreq = value;
         else if (param == "bands") m_coeffCount = lrintf(value + .1);
+        else if (param == "lowestcoef"){
+        	m_lowestCoef  = lrintf(value + .1);
+        	if(m_lowestCoef >= m_coeffCount) m_lowestCoef = m_coeffCount - 1;
+        	if(m_lowestCoef > m_highestCoef) m_lowestCoef = m_highestCoef;
+        }
+        else if (param == "highestcoef"){
+        	m_highestCoef  = lrintf(value + .1);
+        	if(m_highestCoef >= m_coeffCount) m_highestCoef = m_coeffCount - 1;
+        	if(m_highestCoef < m_lowestCoef) m_highestCoef = m_lowestCoef;
+        }
         else if (param == "style") m_mfccStyle = lrintf(value + .1);
     }
 
@@ -382,7 +440,7 @@ XTractPlugin::setupOutputDescriptors() const
     d.isQuantized = false;
     d.sampleType = OutputDescriptor::OneSamplePerStep;
 
-    if(xtFd->is_scalar){
+    if (xtFd->is_scalar){
 	switch(xtFd->result.scalar.unit){
 	    case XTRACT_HERTZ:	    d.unit = "Hz"; break;
 	    case XTRACT_DBFS:	    d.unit = "dB"; break;
@@ -396,8 +454,6 @@ XTractPlugin::setupOutputDescriptors() const
 	    d.identifier = "amplitudes";
 	    d.name = "Peak Amplitudes";
             d.description = "";
-	    m_outputDescriptors.push_back(d);
-
 	}
     } 
 
@@ -613,7 +669,7 @@ XTractPlugin::process(const float *const *inputBuffers,
     data_temp = new float[N];
 
     if (m_xtFeature == XTRACT_ROLLOFF || 
-	    m_xtFeature == XTRACT_PEAK_SPECTRUM || needPeaks) {
+        m_xtFeature == XTRACT_PEAK_SPECTRUM || needPeaks) {
         argf[0] = m_inputSampleRate / N;
 	if(m_xtFeature == XTRACT_ROLLOFF) 
 	    argf[1] = m_rolloffThreshold;
@@ -748,7 +804,7 @@ XTractPlugin::process(const float *const *inputBuffers,
             bool good = true;
 
             for (size_t n = 0; n < m_outputDescriptors[output].binCount; ++n) {
-                float value = m_resultBuffer[index];
+                float value = m_resultBuffer[index + m_lowestCoef];
                 if (isnan(value) || isinf(value)) {
                     good = false;
                     index += (m_outputDescriptors[output].binCount - n);

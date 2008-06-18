@@ -18,7 +18,7 @@ vamp:vamp-libxtract:tristimulus_3::Low Level Features
 vamp:vamp-libxtract:smoothness::Low Level Features
 vamp:vamp-libxtract:spread::Low Level Features
 vamp:vamp-libxtract:zcr::Low Level Features
-vamp:vamp-libxtract:spectral_rolloff::Low Level Features
+vamp:vamp-libxtract:rolloff::Low Level Features
 vamp:vamp-libxtract:loudness::Low Level Features
 vamp:vamp-libxtract:flatness::Low Level Features
 vamp:vamp-libxtract:tonality::Low Level Features
