@@ -332,7 +332,7 @@ XTractPlugin::getParameterDescriptors() const
 
     if (needPeakThreshold()) {
         
-        desc.identifier = "peak threshold";
+        desc.identifier = "peak-threshold";
         desc.name = "Peak Threshold";
         desc.minValue = 0;
         desc.maxValue = 100;
@@ -346,7 +346,7 @@ XTractPlugin::getParameterDescriptors() const
     
     if (needRolloffThreshold()) {
 
-        desc.identifier = "rolloff threshold";
+        desc.identifier = "rolloff-threshold";
         desc.name = "Rolloff Threshold";
         desc.minValue = 0;
         desc.maxValue = 100;
@@ -360,7 +360,7 @@ XTractPlugin::getParameterDescriptors() const
 
     if (needHarmonicThreshold()) {
 
-	desc.identifier = "harmonic threshold";
+	desc.identifier = "harmonic-threshold";
         desc.name = "Harmonic Threshold";
         desc.minValue = 0;
         desc.maxValue = 1.0;
@@ -386,9 +386,9 @@ XTractPlugin::getParameter(string param) const
         if (param == "style") return m_mfccStyle;
     }
 
-    if (param == "peak threshold") return m_peakThreshold;
-    if (param == "rolloff threshold") return m_rolloffThreshold;
-    if (param == "harmonic threshold") return m_harmonicThreshold;
+    if (param == "peak-threshold") return m_peakThreshold;
+    if (param == "rolloff-threshold") return m_rolloffThreshold;
+    if (param == "harmonic-threshold") return m_harmonicThreshold;
 
     return 0.f;
 }
@@ -413,9 +413,9 @@ XTractPlugin::setParameter(string param, float value)
         else if (param == "style") m_mfccStyle = lrintf(value + .1);
     }
 
-    if (param == "peak threshold") m_peakThreshold = value;
-    if (param == "rolloff threshold") m_rolloffThreshold = value;
-    if (param == "harmonic threshold") m_harmonicThreshold = value;
+    if (param == "peak-threshold") m_peakThreshold = value;
+    if (param == "rolloff-threshold") m_rolloffThreshold = value;
+    if (param == "harmonic-threshold") m_harmonicThreshold = value;
 }
 
 XTractPlugin::OutputList
