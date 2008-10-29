@@ -22,7 +22,7 @@ PLUGIN_LIBS	= -L$(VAMPLIBDIR) -Wl,-Bstatic -lvamp-sdk -lxtract -lfftw3f -Wl,-Bdy
 
 # Flags required to tell the compiler to make a dynamically loadable object
 #
-PLUGIN_LDFLAGS	= -shared -Wl,-Bsymbolic -static-libgcc
+PLUGIN_LDFLAGS	= -shared -Wl,-Bsymbolic -Wl,--version-script=vamp-plugin.map
 
 # File extension for a dynamically loadable object
 #
