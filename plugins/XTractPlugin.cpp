@@ -225,6 +225,7 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
 	    m_outputBinCount = 1; break;
     }
 
+    m_outputDescriptors.clear();
     setupOutputDescriptors();
 
     m_initialised = true;
@@ -421,7 +422,9 @@ XTractPlugin::setParameter(string param, float value)
 XTractPlugin::OutputList
 XTractPlugin::getOutputDescriptors() const
 {
-    if (m_outputDescriptors.empty()) setupOutputDescriptors();
+    if (m_outputDescriptors.empty()) {
+        setupOutputDescriptors();
+    }
     return m_outputDescriptors;
 }
 
@@ -499,8 +502,9 @@ XTractPlugin::FeatureSet
 XTractPlugin::process(const float *const *inputBuffers,
                       Vamp::RealTime timestamp)
 {
-
-    if (m_outputDescriptors.empty()) setupOutputDescriptors();
+    if (m_outputDescriptors.empty()) {
+        setupOutputDescriptors();
+    }
 
     int rbs = m_outputBinCount > m_blockSize ? m_outputBinCount : m_blockSize;
     if (!m_resultBuffer) {
@@ -813,7 +817,7 @@ XTractPlugin::process(const float *const *inputBuffers,
                 feature.values.push_back(value);
                 ++index;
             }
-            
+
             if (good) fs[output].push_back(feature);
         }
 //    }
