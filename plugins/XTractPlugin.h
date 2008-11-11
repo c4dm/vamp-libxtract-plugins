@@ -85,6 +85,10 @@ protected:
     float **m_mfccFilters;
     int m_mfccStyle;
 
+    int m_spectrumType;
+    int m_dc;
+    int m_normalise;
+
     int *m_barkBandLimits;
 
     static xtract_function_descriptor_t *m_xtDescriptors;

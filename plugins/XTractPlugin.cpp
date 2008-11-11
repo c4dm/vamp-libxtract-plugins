@@ -5,7 +5,7 @@
     libxtract audio feature extraction library.
 
     Centre for Digital Music, Queen Mary, University of London.
-    This file copyright 2006 Queen Mary, University of London.
+    This file copyright 2006-2008 Queen Mary, University of London.
     
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -47,6 +47,9 @@ XTractPlugin::XTractPlugin(unsigned int xtFeature, float inputSampleRate) :
     m_lowestCoef(0),
     m_mfccFilters(0),
     m_mfccStyle((int)XTRACT_EQUAL_GAIN),
+    m_spectrumType((int)XTRACT_MAGNITUDE_SPECTRUM),
+    m_dc(0),
+    m_normalise(0),
     m_barkBandLimits(0),
     m_outputBinCount(0),
     m_initialised(false)
@@ -105,13 +108,13 @@ XTractPlugin::getMaker() const
 int
 XTractPlugin::getPluginVersion() const
 {
-    return 2;
+    return 3;
 }
 
 string
 XTractPlugin::getCopyright() const
 {
-    string text = "Copyright 2006 Jamie Bullock, plugin Copyright 2006 Queen Mary, University of London. ";
+    string text = "Copyright 2006 Jamie Bullock, plugin Copyright 2006-2008 Queen Mary, University of London. ";
 
     string method = "";
 
@@ -207,6 +210,7 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
 
     switch (m_xtFeature) {
 	case XTRACT_SPECTRUM:	     
+	    m_outputBinCount = m_blockSize / 2 + (m_dc ? 1 : 0); break;
 	case XTRACT_HARMONIC_SPECTRUM:	     
 	case XTRACT_PEAK_SPECTRUM:           
 	    m_outputBinCount = m_blockSize / 2; break;
@@ -218,7 +222,6 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
 	    m_outputBinCount = m_blockSize; break;
 	case XTRACT_MFCC:                
 	    m_outputBinCount = (m_highestCoef - m_lowestCoef)+1; break;
-	    //m_outputBinCount = m_coeffCount; break;
 	case XTRACT_BARK_COEFFICIENTS:   
 	    m_outputBinCount = XTRACT_BARK_BANDS; break;
 	default:			     
@@ -331,6 +334,33 @@ XTractPlugin::getParameterDescriptors() const
         list.push_back(desc);
     }
 
+    if (m_xtFeature == XTRACT_SPECTRUM) {
+
+        desc.identifier = "spectrumtype";
+        desc.name = "Type";
+        desc.minValue = 0;
+        desc.maxValue = 3;
+        desc.defaultValue = int(XTRACT_MAGNITUDE_SPECTRUM);
+        desc.isQuantized = true;
+        desc.quantizeStep = 1;
+        desc.valueNames.push_back("Magnitude Spectrum");
+        desc.valueNames.push_back("Log Magnitude Spectrum");
+        desc.valueNames.push_back("Power Spectrum");
+        desc.valueNames.push_back("Log Power Spectrum");
+        list.push_back(desc);
+
+        desc.identifier = "dc";
+        desc.name = "Include DC";
+        desc.maxValue = 1;
+        desc.defaultValue = 0;
+        desc.valueNames.clear();
+        list.push_back(desc);
+
+        desc.identifier = "normalise";
+        desc.name = "Normalise";
+        list.push_back(desc);
+    }
+
     if (needPeakThreshold()) {
         
         desc.identifier = "peak-threshold";
@@ -387,6 +417,12 @@ XTractPlugin::getParameter(string param) const
         if (param == "style") return m_mfccStyle;
     }
 
+    if (m_xtFeature == XTRACT_SPECTRUM) {
+        if (param == "spectrumtype") return m_spectrumType;
+        if (param == "dc") return m_dc;
+        if (param == "normalise") return m_normalise;
+    }
+
     if (param == "peak-threshold") return m_peakThreshold;
     if (param == "rolloff-threshold") return m_rolloffThreshold;
     if (param == "harmonic-threshold") return m_harmonicThreshold;
@@ -400,18 +436,24 @@ XTractPlugin::setParameter(string param, float value)
     if (m_xtFeature == XTRACT_MFCC) {
         if (param == "minfreq") m_minFreq = value;
         else if (param == "maxfreq") m_maxFreq = value;
-        else if (param == "bands") m_coeffCount = lrintf(value + .1);
+        else if (param == "bands") m_coeffCount = int(value + .1);
         else if (param == "lowestcoef"){
-        	m_lowestCoef  = lrintf(value + .1);
+        	m_lowestCoef  = int(value + .1);
         	if(m_lowestCoef >= m_coeffCount) m_lowestCoef = m_coeffCount - 1;
         	if(m_lowestCoef > m_highestCoef) m_lowestCoef = m_highestCoef;
         }
         else if (param == "highestcoef"){
-        	m_highestCoef  = lrintf(value + .1);
+        	m_highestCoef  = int(value + .1);
         	if(m_highestCoef >= m_coeffCount) m_highestCoef = m_coeffCount - 1;
         	if(m_highestCoef < m_lowestCoef) m_highestCoef = m_lowestCoef;
         }
-        else if (param == "style") m_mfccStyle = lrintf(value + .1);
+        else if (param == "style") m_mfccStyle = int(value + .1);
+    }
+
+    if (m_xtFeature == XTRACT_SPECTRUM) {
+        if (param == "spectrumtype") m_spectrumType = int(value + .1);
+        if (param == "dc") m_dc = int(value + .1);
+        if (param == "normalise") m_normalise = int(value + .1);
     }
 
     if (param == "peak-threshold") m_peakThreshold = value;
@@ -506,7 +548,9 @@ XTractPlugin::process(const float *const *inputBuffers,
         setupOutputDescriptors();
     }
 
-    int rbs = m_outputBinCount > m_blockSize ? m_outputBinCount : m_blockSize;
+    int rbs =
+        // Add 2 here to accommodate extra data for spectrum with DC
+        2 + (m_outputBinCount > m_blockSize ? m_outputBinCount : m_blockSize);
     if (!m_resultBuffer) {
         m_resultBuffer = new float[rbs];
     }
@@ -553,6 +597,7 @@ XTractPlugin::process(const float *const *inputBuffers,
 
     float argf[XTRACT_MAXARGS];
     argv = &argf[0];
+    argf[0] = 0.f; // handy for some, e.g. lowest_value which has a threshold
 
     float mean, variance, sd, npartials, nharmonics;
 
@@ -571,6 +616,10 @@ XTractPlugin::process(const float *const *inputBuffers,
     i = xtFd->argc;
 
     while(i--){
+        if (m_xtFeature == XTRACT_BARK_COEFFICIENTS) {
+            /* "BARK_COEFFICIENTS is special because argc = BARK_BANDS" */
+            break;
+        }
 	donor = xtFd->argv.donor[i];
 	switch(donor){
 	    case XTRACT_STANDARD_DEVIATION: 
@@ -669,6 +718,7 @@ XTractPlugin::process(const float *const *inputBuffers,
     // XTRACT_MFCC -- Mel filter coefficients
     // XTRACT_BARK_COEFFICIENTS -- Bark band limits
     // XTRACT_NOISINESS -- npartials, nharmonics.
+    // XTRACT_SPECTRUM -- q, spectrum type, dc, normalise
 
     data_temp = new float[N];
 
@@ -679,6 +729,14 @@ XTractPlugin::process(const float *const *inputBuffers,
 	    argf[1] = m_rolloffThreshold;
 	else 
 	    argf[1] = m_peakThreshold;
+        argv = &argf[0];
+    }
+
+    if (m_xtFeature == XTRACT_SPECTRUM) {
+        argf[0] = 0; // xtract_spectrum will calculate this for us
+        argf[1] = m_spectrumType;
+        argf[2] = m_dc;
+        argf[3] = m_normalise;
         argv = &argf[0];
     }
 
