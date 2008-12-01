@@ -1,24 +1,18 @@
 
-# Location of Vamp SDK
-#
-VAMPDIR		= ../vamp-plugin-sdk
-VAMPLIBDIR	= $(VAMPDIR)/vamp-sdk
-
 # Location of our plugins
 #
 PLUGINDIR	= plugins
 
 # Compile flags
 #
-#CXXFLAGS	:= $(CXXFLAGS) -DNDEBUG -O2 -march=pentium3 -mfpmath=sse -ffast-math -Wall -I$(VAMPDIR) -I.
-CXXFLAGS       := $(CXXFLAGS) -DDEBUG -g -Wall -I$(VAMPDIR) -I.
+CXXFLAGS	:= $(CXXFLAGS) -DNDEBUG -O3 -ffast-math -Wall -fPIC -I.
 
 
 # Libraries required for the plugins.  Note that we can (and actively
 # want to) statically link libstdc++, because our plugin exposes only
 # a C API so there are no boundary compatibility problems.
 #
-PLUGIN_LIBS	= -L$(VAMPLIBDIR) -Wl,-Bstatic -lvamp-sdk -lxtract -lfftw3f -Wl,-Bdynamic
+PLUGIN_LIBS	= -Wl,-Bstatic -lvamp-sdk -lxtract -lfftw3f -Wl,-Bdynamic
 
 # Flags required to tell the compiler to make a dynamically loadable object
 #
