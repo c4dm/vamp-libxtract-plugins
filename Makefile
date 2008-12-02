@@ -7,10 +7,7 @@ PLUGINDIR	= plugins
 #
 CXXFLAGS	:= $(CXXFLAGS) -DNDEBUG -O3 -ffast-math -Wall -fPIC -I.
 
-
-# Libraries required for the plugins.  Note that we can (and actively
-# want to) statically link libstdc++, because our plugin exposes only
-# a C API so there are no boundary compatibility problems.
+# Libraries required for the plugins.
 #
 PLUGIN_LIBS	= -Wl,-Bstatic -lvamp-sdk -lxtract -lfftw3f -Wl,-Bdynamic
 
@@ -23,7 +20,7 @@ PLUGIN_LDFLAGS	= -shared -Wl,-Bsymbolic -Wl,--version-script=vamp-plugin.map
 PLUGIN_EXT	= .so
 
 ## For OS/X with g++:
-#PLUGIN_LDFLAGS	= -dynamiclib
+#PLUGIN_LDFLAGS	= -dynamiclib -exported_symbols_list=vamp-plugin.list
 #PLUGIN_EXT	= .dylib
 
 
