@@ -18,7 +18,7 @@
 
 #include <cassert>
 #include <math.h>
-
+#include <stdio.h>
 
 using std::cerr;
 using std::endl;
