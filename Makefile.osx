@@ -3,31 +3,41 @@
 #
 PLUGINDIR	= plugins
 
+# Location of LibXtract
+#
+LIBXTRACTDIR	= LibXtract
+
 # Compile flags
 #
-CXXFLAGS	:= $(CXXFLAGS) -arch x86_64 -arch i386 -mmacosx-version-min=10.5 -DNDEBUG -O3 -ffast-math -Wall -fPIC -I. -I/Users/cannam/code/inst/include
+CFLAGS		:= $(CFLAGS) -DXTRACT_FFT=1 -arch x86_64 -arch i386 -mmacosx-version-min=10.5 -DNDEBUG -O3 -ffast-math -Wall -fPIC -I. -I$(LIBXTRACTDIR) 
 
 # Libraries required for the plugins.
 #
-PLUGIN_LIBS	= -L/Users/cannam/code/inst/lib -L/Users/cannam/code/10.6/inst/lib -lvamp-sdk -lxtract -lfftw3f -lfftw3
+PLUGIN_LIBS	= -lvamp-sdk -lfftw3f
 
+# Flags required to tell the compiler to make a dynamically loadable object
+#
 PLUGIN_LDFLAGS	= -arch x86_64 -arch i386 -mmacosx-version-min=10.5 -dynamiclib -exported_symbols_list=vamp-plugin.list
+
+# File extension for a dynamically loadable object
+#
 PLUGIN_EXT	= .dylib
 
 
 ### End of user-serviceable parts
 
 PLUGIN_OBJECTS	= libmain.o $(patsubst %.cpp,%.o,$(wildcard $(PLUGINDIR)/*.cpp))
+XTRACT_OBJECTS	= $(patsubst %.c,%.o,$(wildcard $(LIBXTRACTDIR)/src/*.c))
 PLUGIN_HEADERS	= $(patsubst %.cpp,%.h,$(wildcard $(PLUGINDIR)/*.cpp))
 PLUGIN_TARGET	= vamp-libxtract$(PLUGIN_EXT)
 
 all:		$(PLUGIN_TARGET)
 
-$(PLUGIN_TARGET):	$(PLUGIN_OBJECTS) $(PLUGIN_HEADERS)
-		$(CXX) $(LDFLAGS) $(PLUGIN_LDFLAGS) -o $@ $(PLUGIN_OBJECTS) $(PLUGIN_LIBS)
+$(PLUGIN_TARGET):	$(PLUGIN_OBJECTS) $(XTRACT_OBJECTS) $(PLUGIN_HEADERS)
+		$(CXX) $(LDFLAGS) $(PLUGIN_LDFLAGS) -o $@ $(PLUGIN_OBJECTS) $(XTRACT_OBJECTS) $(PLUGIN_LIBS)
 
 clean:		
-		rm -f $(PLUGIN_OBJECTS)
+		rm -f $(PLUGIN_OBJECTS) $(XTRACT_OBJECTS)
 
 distclean:	clean
 		rm -f $(PLUGIN_TARGET) *~ */*~
