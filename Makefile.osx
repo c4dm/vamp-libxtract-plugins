@@ -10,6 +10,7 @@ LIBXTRACTDIR	= LibXtract
 # Compile flags
 #
 CFLAGS		:= $(CFLAGS) -DXTRACT_FFT=1 -arch x86_64 -arch i386 -mmacosx-version-min=10.5 -DNDEBUG -O3 -ffast-math -Wall -fPIC -I. -I$(LIBXTRACTDIR) 
+CXXFLAGS	:= $(CFLAGS)
 
 # Libraries required for the plugins.
 #
