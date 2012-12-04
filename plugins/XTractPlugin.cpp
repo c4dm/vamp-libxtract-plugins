@@ -5,7 +5,7 @@
     libxtract audio feature extraction library.
 
     Centre for Digital Music, Queen Mary, University of London.
-    This file copyright 2006-2008 Queen Mary, University of London.
+    This file copyright 2006-2012 Queen Mary, University of London.
     
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -109,13 +109,13 @@ XTractPlugin::getMaker() const
 int
 XTractPlugin::getPluginVersion() const
 {
-    return 3;
+    return 4;
 }
 
 string
 XTractPlugin::getCopyright() const
 {
-    string text = "Copyright 2006 Jamie Bullock, plugin Copyright 2006-2008 Queen Mary, University of London. ";
+    string text = "Copyright 2006-2012 Jamie Bullock, plugin Copyright 2006-2012 Queen Mary, University of London. ";
 
     string method = "";
 
