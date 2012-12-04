@@ -17,6 +17,7 @@
 #include "XTractPlugin.h"
 
 #include <cassert>
+#include <cstdio>
 #include <math.h>
 
 
