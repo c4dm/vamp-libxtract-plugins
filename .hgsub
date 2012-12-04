@@ -1,1 +1,1 @@
-LibXtract = git://github.com/jamiebullock/LibXtract.git
+LibXtract = [git]git://github.com/jamiebullock/LibXtract.git
