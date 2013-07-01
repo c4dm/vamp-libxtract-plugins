@@ -9,7 +9,7 @@ LIBXTRACTDIR	= LibXtract
 
 # Compile flags
 #
-CFLAGS		:= $(CFLAGS) -DXTRACT_FFT=1 -DNDEBUG -O3 -ffast-math -Wall -fPIC -I. -I$(LIBXTRACTDIR)
+CFLAGS		:= $(CFLAGS) -DXTRACT_FFT=1 -DUSE_OOURA=1 -DNDEBUG -O3 -ffast-math -Wall -fPIC -I. -I$(LIBXTRACTDIR)
 CXXFLAGS	:= $(CFLAGS) 
 
 # Libraries required for the plugins.
@@ -32,7 +32,7 @@ PLUGIN_EXT	= .so
 ### End of user-serviceable parts
 
 PLUGIN_OBJECTS	= libmain.o $(patsubst %.cpp,%.o,$(wildcard $(PLUGINDIR)/*.cpp))
-XTRACT_OBJECTS	= $(patsubst %.c,%.o,$(wildcard $(LIBXTRACTDIR)/src/*.c))
+XTRACT_OBJECTS	= $(patsubst %.c,%.o,$(wildcard $(LIBXTRACTDIR)/src/*.c $(LIBXTRACTDIR)/src/*/*.c))
 PLUGIN_HEADERS	= $(patsubst %.cpp,%.h,$(wildcard $(PLUGINDIR)/*.cpp))
 PLUGIN_TARGET	= vamp-libxtract$(PLUGIN_EXT)
 
