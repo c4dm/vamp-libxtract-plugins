@@ -63,26 +63,26 @@ protected:
     mutable OutputList m_outputDescriptors;
     void setupOutputDescriptors() const;
 
-    bool processSPF0(const float *data);
+    bool processSPF0(const double *data);
 
     const unsigned int m_xtFeature;
     size_t m_channels;
     size_t m_stepSize;
     size_t m_blockSize;
 
-    float *m_resultBuffer;
+    double *m_resultBuffer;
 
-    float m_peakThreshold;
-    float m_rolloffThreshold;
-    float m_harmonicThreshold;
+    double m_peakThreshold;
+    double m_rolloffThreshold;
+    double m_harmonicThreshold;
 
-    float m_minFreq;
-    float m_maxFreq;
+    double m_minFreq;
+    double m_maxFreq;
 
     int m_coeffCount;
     int m_highestCoef;
     int m_lowestCoef;
-    float **m_mfccFilters;
+    double **m_mfccFilters;
     int m_mfccStyle;
 
     int m_spectrumType;

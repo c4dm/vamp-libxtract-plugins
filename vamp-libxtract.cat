@@ -35,6 +35,7 @@ vamp:vamp-libxtract:sum::Low Level Features
 vamp:vamp-libxtract:nonzero_count::Low Level Features
 vamp:vamp-libxtract:f0::Low Level Features
 vamp:vamp-libxtract:failsafe_f0::Low Level Features
+vamp:vamp-libxtract:wavelet_f0::Low Level Features
 vamp:vamp-libxtract:autocorrelation::Low Level Features
 vamp:vamp-libxtract:amdf::Low Level Features
 vamp:vamp-libxtract:asdf::Low Level Features

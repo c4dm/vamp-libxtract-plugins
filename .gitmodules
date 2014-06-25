@@ -1,0 +1,4 @@
+[submodule "LibXtract"]
+	path = LibXtract
+	url = git://github.com/jamiebullock/LibXtract.git
+

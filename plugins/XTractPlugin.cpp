@@ -5,7 +5,7 @@
     libxtract audio feature extraction library.
 
     Centre for Digital Music, Queen Mary, University of London.
-    This file copyright 2006-2008 Queen Mary, University of London.
+    This file copyright 2006-2012 Queen Mary, University of London.
     
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -17,6 +17,7 @@
 #include "XTractPlugin.h"
 
 #include <cassert>
+#include <cstdio>
 #include <math.h>
 #include <stdio.h>
 
@@ -108,13 +109,13 @@ XTractPlugin::getMaker() const
 int
 XTractPlugin::getPluginVersion() const
 {
-    return 3;
+    return 4;
 }
 
 string
 XTractPlugin::getCopyright() const
 {
-    string text = "Copyright 2006 Jamie Bullock, plugin Copyright 2006-2008 Queen Mary, University of London. ";
+    string text = "Copyright 2006-2012 Jamie Bullock, plugin Copyright 2006-2012 Queen Mary, University of London. ";
 
     string method = "";
 
@@ -179,9 +180,9 @@ XTractPlugin::initialise(size_t channels, size_t stepSize, size_t blockSize)
 
     if (donor == XTRACT_INIT_MFCC) {
 
-        m_mfccFilters = new float *[m_coeffCount];
+        m_mfccFilters = new double *[m_coeffCount];
         for (size_t i = 0; i < m_coeffCount; ++i) {
-            m_mfccFilters[i] = new float[m_blockSize];
+            m_mfccFilters[i] = new double[m_blockSize];
         }
 
         int error = (int)xtract_init_mfcc(m_blockSize, m_inputSampleRate/2,
@@ -552,16 +553,22 @@ XTractPlugin::process(const float *const *inputBuffers,
         // Add 2 here to accommodate extra data for spectrum with DC
         2 + (m_outputBinCount > m_blockSize ? m_outputBinCount : m_blockSize);
     if (!m_resultBuffer) {
-        m_resultBuffer = new float[rbs];
+        m_resultBuffer = new double[rbs];
     }
 
     int i;
 
     for (i = 0; i < rbs; ++i) m_resultBuffer[i] = 0.f;
 
-    const float *data = 0;
-    float *fft_temp = 0, *data_temp = 0;
     int N = m_blockSize, M = N >> 1;
+
+    const double *data = 0;
+    double *input_d = new double[N];
+    for (int i = 0; i < N; ++i) {
+        input_d[i] = inputBuffers[0][i];
+    }
+
+    double *fft_temp = 0, *data_temp = 0;
     void *argv = 0;
     bool isSpectral = false;
     xtract_function_descriptor_t *xtFd = xtDescriptor();
@@ -570,22 +577,22 @@ XTractPlugin::process(const float *const *inputBuffers,
 
     switch (xtFd->data.format) {
 	case XTRACT_AUDIO_SAMPLES:
-	    data = &inputBuffers[0][0];
+	    data = input_d;
 	    break;
 	case XTRACT_SPECTRAL:
 	default:
 	    // All the rest are derived from the  spectrum
 	    // Need same format as would be output by xtract_spectrum
-	    float q = m_inputSampleRate / N;
-	    fft_temp = new float[N];
+	    double q = m_inputSampleRate / N;
+	    fft_temp = new double[N];
 	    for (int n = 1; n < N/2; ++n) {
-		fft_temp[n]   = sqrt(inputBuffers[0][n*2]   * 
-			inputBuffers[0][n*2] + inputBuffers[0][n*2+1] * 
-			inputBuffers[0][n*2+1]) / N;
+		fft_temp[n] = sqrt(input_d[n*2]   * 
+			input_d[n*2] + input_d[n*2+1] * 
+			input_d[n*2+1]) / N;
 		fft_temp[N-n] = (N/2 - n) * q;
 	    }
-	    fft_temp[0]   = fabs(inputBuffers[0][0]) / N;
-	    fft_temp[N/2] = fabs(inputBuffers[0][N]) / N;
+	    fft_temp[0]   = fabs(input_d[0]) / N;
+	    fft_temp[N/2] = fabs(input_d[N]) / N;
 	    data = &fft_temp[0];
 	    isSpectral = true;
 	    break;
@@ -593,13 +600,13 @@ XTractPlugin::process(const float *const *inputBuffers,
 
     assert(m_outputBinCount > 0);
 
-    float *result = m_resultBuffer;
+    double *result = m_resultBuffer;
 
-    float argf[XTRACT_MAXARGS];
+    double argf[XTRACT_MAXARGS];
     argv = &argf[0];
     argf[0] = 0.f; // handy for some, e.g. lowest_value which has a threshold
 
-    float mean, variance, sd, npartials, nharmonics;
+    double mean, variance, sd, npartials, nharmonics;
 
     bool needSD, needVariance, needMean, needPeaks, 
 	 needBarkCoefficients, needHarmonics, needF0, needSFM, needMax, 
@@ -720,7 +727,7 @@ XTractPlugin::process(const float *const *inputBuffers,
     // XTRACT_NOISINESS -- npartials, nharmonics.
     // XTRACT_SPECTRUM -- q, spectrum type, dc, normalise
 
-    data_temp = new float[N];
+    data_temp = new double[N];
 
     if (m_xtFeature == XTRACT_ROLLOFF || 
         m_xtFeature == XTRACT_PEAK_SPECTRUM || needPeaks) {
@@ -765,8 +772,7 @@ XTractPlugin::process(const float *const *inputBuffers,
     }
 
     if (needF0) {
-	xtract_failsafe_f0(&inputBuffers[0][0], N, 
-		(void *)&m_inputSampleRate, result);
+	xtract_failsafe_f0(&input_d[0], N, (void *)&m_inputSampleRate, result);
 	argf[0] = *result;
 	argv = &argf[0];
     }
@@ -866,7 +872,7 @@ XTractPlugin::process(const float *const *inputBuffers,
             bool good = true;
 
             for (size_t n = 0; n < m_outputDescriptors[output].binCount; ++n) {
-                float value = m_resultBuffer[index + m_lowestCoef];
+                double value = m_resultBuffer[index + m_lowestCoef];
                 if (isnan(value) || isinf(value)) {
                     good = false;
                     index += (m_outputDescriptors[output].binCount - n);
@@ -883,6 +889,7 @@ XTractPlugin::process(const float *const *inputBuffers,
 //done:
     delete[] fft_temp;
     delete[] data_temp;
+    delete[] input_d;
 
 //    cerr << "XTractPlugin::process returning" << endl;
 
