@@ -10,7 +10,7 @@ LIBXTRACTDIR	= LibXtract
 # Compile flags
 #
 CFLAGS		:= $(CFLAGS) -DXTRACT_FFT=1 -DUSE_OOURA=1 -DNDEBUG -O3 -ffast-math -Wall -fPIC -I. -I$(LIBXTRACTDIR)
-CXXFLAGS	:= $(CFLAGS) 
+CXXFLAGS	:= $(CXXFLAGS) $(CFLAGS) 
 
 # Libraries required for the plugins.
 #
@@ -18,7 +18,7 @@ PLUGIN_LIBS	= -Wl,-Bstatic -lvamp-sdk -lfftw3f -Wl,-Bdynamic
 
 # Flags required to tell the compiler to make a dynamically loadable object
 #
-PLUGIN_LDFLAGS	= -shared -Wl,-Bsymbolic -Wl,--version-script=vamp-plugin.map
+PLUGIN_LDFLAGS	= $(LDFLAGS) -shared -Wl,-Bsymbolic -Wl,--version-script=vamp-plugin.map
 
 # File extension for a dynamically loadable object
 #
