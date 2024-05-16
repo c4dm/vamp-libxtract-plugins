@@ -1,4 +1,4 @@
 [submodule "LibXtract"]
 	path = LibXtract
-	url = ssh://git@github.com/jamiebullock/LibXtract
+	url = https://github.com/jamiebullock/LibXtract
 
