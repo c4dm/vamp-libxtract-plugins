@@ -109,7 +109,7 @@ XTractPlugin::getMaker() const
 int
 XTractPlugin::getPluginVersion() const
 {
-    return 4;
+    return 5;
 }
 
 string

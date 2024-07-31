@@ -68,6 +68,7 @@ const VampPluginDescriptor *vampGetPluginDescriptor(unsigned int vampApiVersion,
         XTRACT_FLATNESS_DB,     // appears to implement only the db part
 	XTRACT_POWER,		// not implemented
         XTRACT_HPS,             // "this function doesn't work properly"
+        XTRACT_MIDICENT,        // not meaningful in isolation
         XTRACT_LNORM,           // not quite sure what it is or its parameters
         XTRACT_FLUX,            // not implemented
         XTRACT_ATTACK_TIME,     // not implemented
